@@ -1,9 +1,8 @@
-import React, { use, useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type Props = { playerName: string; selectedTeam: string };
 
-function GamePage({ selectedTeam }: Props) {
+function GamePage({ playerName, selectedTeam }: Props) {
   const [time, setTime] = useState(0);
 
   useEffect(() => {
@@ -13,6 +12,41 @@ function GamePage({ selectedTeam }: Props) {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!playerName || !selectedTeam) return;
+
+    const ws = new WebSocket("ws://localhost:3002");
+
+    ws.onopen = () => {
+      console.log("Kapcsolódva a WebSocket szerverhez");
+
+      ws.send(
+        JSON.stringify({
+          type: "join",
+          playerName,
+          team: selectedTeam,
+        }),
+      );
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("Üzenet a szervertől:", data);
+      } catch (error) {
+        console.log("Nem JSON üzenet:", event.data);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("Kapcsolat bontva a WebSocket szerverrel");
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [playerName, selectedTeam]);
 
   const formatTime = (t: number) => {
     const minutes = Math.floor(t / 60);
@@ -30,17 +64,14 @@ function GamePage({ selectedTeam }: Props) {
         <div className="score">
           <span>{formatTime(time)}</span>
         </div>
-
         <div className="teamB">B csapat</div>
       </div>
 
       <div id="field">
         <div className="mid-line"></div>
         <div className="center-circle"></div>
-
         <div className="goal left-goal"></div>
         <div className="goal right-goal"></div>
-
         <div className={selectedTeam === "A" ? "player-a" : "player-b"}></div>
       </div>
     </div>
